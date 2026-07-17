@@ -1,5 +1,6 @@
-import { Leaf, Sprout, Home, LayoutDashboard, Settings, Compass, TreePine, Droplet, Thermometer, Gauge } from "lucide-react";
+import { Leaf, Sprout, Home, LayoutDashboard, Settings, Compass, TreePine, Droplet, Thermometer, Gauge, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { logout } from "@/lib/api-client";
 
 export function Sidebar() {
   const [location] = useLocation();
@@ -50,6 +51,12 @@ export function Sidebar() {
             </span>
           </div>
         </div>
+        <button
+          onClick={logout}
+          className="flex items-center gap-2 w-full px-2 py-2 mt-1 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-sidebar-accent transition-colors"
+        >
+          <LogOut className="w-4 h-4" /> Sign out
+        </button>
       </div>
     </div>
   );

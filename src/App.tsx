@@ -4,20 +4,29 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import Overview from '@/pages/Overview';
 import TreeDetail from '@/pages/TreeDetail';
+import Login from '@/pages/Login';
 import { Shell } from '@/components/layout/shell';
+import { ProtectedRoute } from '@/components/protected-route';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
 
 function Router() {
   return (
-    <Shell>
-      <Switch>
-        <Route path="/" component={Overview} />
-        <Route path="/trees/:id" component={TreeDetail} />
-        <Route component={NotFound} />
-      </Switch>
-    </Shell>
+    <Switch>
+      <Route path="/login" component={Login} />
+      <Route>
+        <ProtectedRoute>
+          <Shell>
+            <Switch>
+              <Route path="/" component={Overview} />
+              <Route path="/trees/:id" component={TreeDetail} />
+              <Route component={NotFound} />
+            </Switch>
+          </Shell>
+        </ProtectedRoute>
+      </Route>
+    </Switch>
   );
 }
 

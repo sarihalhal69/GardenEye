@@ -14,6 +14,7 @@
 //   GET    /api/trees/:id/readings       -> Reading[]
 
 import { useQuery, useMutation, type UseMutationResult } from "@tanstack/react-query";
+import { getToken, setToken, clearToken } from "@/lib/auth";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -47,15 +48,47 @@ export interface DashboardSummary {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     ...options,
   });
+  if (res.status === 401 && path !== "/api/auth/login") {
+    clearToken();
+    window.location.href = `${import.meta.env.BASE_URL}login`;
+    throw new Error("Not authenticated");
+  }
   if (!res.ok) {
     throw new Error(`API ${path} failed: ${res.status} ${res.statusText}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
+}
+
+// --- Auth ---
+export function useLogin(): UseMutationResult<
+  { token: string },
+  Error,
+  { username: string; password: string }
+> {
+  return useMutation({
+    mutationFn: async (credentials) => {
+      const data = await request<{ token: string }>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify(credentials),
+      });
+      setToken(data.token);
+      return data;
+    },
+  });
+}
+
+export function logout() {
+  clearToken();
+  window.location.href = `${import.meta.env.BASE_URL}login`;
 }
 
 // --- Query keys (kept as functions to match the old package's API) ---
