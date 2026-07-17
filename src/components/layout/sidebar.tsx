@@ -1,9 +1,18 @@
-import { Leaf, Sprout, Home, LayoutDashboard, Settings, Compass, TreePine, Droplet, Thermometer, Gauge, LogOut } from "lucide-react";
+import { Leaf, Sprout, Home, LayoutDashboard, Settings, Compass, TreePine, Droplet, Thermometer, Gauge, LogOut, BatteryFull, BatteryMedium, BatteryLow } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { logout } from "@/lib/api-client";
+import { logout, useGetDeviceStatus } from "@/lib/api-client";
 
 export function Sidebar() {
   const [location] = useLocation();
+  const { data: status } = useGetDeviceStatus();
+
+  const isOnline = status?.lastSeenAt
+    ? Date.now() - new Date(status.lastSeenAt).getTime() < 10 * 60 * 1000 // seen in last 10 min
+    : false;
+
+  const battery = status?.batteryPercent;
+  const BatteryIcon = battery == null ? BatteryFull : battery > 50 ? BatteryFull : battery > 20 ? BatteryMedium : BatteryLow;
+  const batteryColor = battery == null ? "text-muted-foreground" : battery > 20 ? "text-muted-foreground" : "text-destructive";
 
   const navItems = [
     { name: "Overview", path: "/", icon: LayoutDashboard },
@@ -46,11 +55,17 @@ export function Sidebar() {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-medium">Field Robot</span>
-            <span className="text-xs text-green-600 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Online
+            <span className={`text-xs flex items-center gap-1 ${isOnline ? "text-green-600" : "text-muted-foreground"}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-green-500" : "bg-muted-foreground"}`}></span>
+              {isOnline ? "Online" : "Offline"}
             </span>
           </div>
         </div>
+        {battery != null && (
+          <div className={`flex items-center gap-2 px-2 py-1 mt-1 text-xs ${batteryColor}`}>
+            <BatteryIcon className="w-4 h-4" /> {battery}%
+          </div>
+        )}
         <button
           onClick={logout}
           className="flex items-center gap-2 w-full px-2 py-2 mt-1 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-sidebar-accent transition-colors"

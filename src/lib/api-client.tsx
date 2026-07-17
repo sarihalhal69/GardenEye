@@ -68,6 +68,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json();
 }
 
+export function useGetDeviceStatus() {
+  return useQuery({
+    queryKey: ["device-status"],
+    queryFn: () => request<{ batteryPercent: number | null; batteryVoltage: number | null; lastSeenAt: string | null }>("/api/device/status"),
+    refetchInterval: 30_000,
+  });
+}
+
 // --- Auth ---
 export function useLogin(): UseMutationResult<
   { token: string },
