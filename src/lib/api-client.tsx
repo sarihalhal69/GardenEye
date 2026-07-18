@@ -18,6 +18,14 @@ import { getToken, setToken, clearToken } from "@/lib/auth";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
+// Photo URLs from the backend are relative (e.g. "/uploads/xxx.jpg"),
+// meant to be combined with the Pi's API address, not the frontend's.
+export function resolvePhotoUrl(photoUrl: string | null | undefined): string | undefined {
+  if (!photoUrl) return undefined;
+  if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) return photoUrl;
+  return `${BASE_URL}${photoUrl}`;
+}
+
 export interface Reading {
   id: number;
   timestamp: string;

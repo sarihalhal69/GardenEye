@@ -1,4 +1,4 @@
-import { useGetTree, useUpdateTree, useDeleteTree, useListTreeReadings, getGetTreeQueryKey, getListTreesQueryKey, getGetDashboardSummaryQueryKey } from "@/lib/api-client";
+import { useGetTree, useUpdateTree, useDeleteTree, useListTreeReadings, getGetTreeQueryKey, getListTreesQueryKey, getGetDashboardSummaryQueryKey, resolvePhotoUrl } from "@/lib/api-client";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -311,7 +311,7 @@ export default function TreeDetail() {
               {latestReading?.photoUrl ? (
                 <div className="rounded-lg overflow-hidden border border-border bg-black/5 aspect-[4/3] relative">
                   <img 
-                    src={latestReading.photoUrl} 
+                    src={resolvePhotoUrl(latestReading.photoUrl)} 
                     alt={`Latest photo of ${tree.name}`} 
                     className="w-full h-full object-cover"
                   />
