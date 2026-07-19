@@ -123,6 +123,11 @@ export default function Drive() {
               ? `${currentSteps.length} move(s) recorded since the last stop`
               : "Drive toward the first tree, then name it below"}
           </p>
+          {drive.isError && (
+            <p className="text-xs text-destructive mt-1">
+              Couldn't reach the car: {drive.error instanceof Error ? drive.error.message : "unknown error"}
+            </p>
+          )}
         </CardContent>
       </Card>
 
