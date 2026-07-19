@@ -16,6 +16,8 @@ export function Sidebar() {
 
   const navItems = [
     { name: "Overview", path: "/", icon: LayoutDashboard },
+    { name: "Drive & Record", path: "/drive", icon: Gauge },
+    { name: "Route Editor", path: "/route", icon: Compass },
   ];
 
   return (

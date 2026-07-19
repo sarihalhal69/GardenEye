@@ -76,6 +76,41 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json();
 }
 
+// --- Route ---
+export interface RouteStep {
+  action: "forward" | "backward" | "turn_left" | "turn_right";
+  seconds: number;
+  speed: number;
+}
+export interface RouteStop {
+  id?: number;
+  orderIndex?: number;
+  treeName: string;
+  markerId?: number | null;
+  steps: RouteStep[];
+}
+
+export function useDrive(): UseMutationResult<{ ok: boolean }, Error, { left: number; right: number }> {
+  return useMutation({
+    mutationFn: (data) =>
+      request<{ ok: boolean }>("/api/device/drive", { method: "POST", body: JSON.stringify(data) }),
+  });
+}
+
+export function useGetRoute() {
+  return useQuery({
+    queryKey: ["route"],
+    queryFn: () => request<RouteStop[]>("/api/route"),
+  });
+}
+
+export function useSaveRoute(): UseMutationResult<RouteStop[], Error, { stops: RouteStop[] }> {
+  return useMutation({
+    mutationFn: (data) =>
+      request<RouteStop[]>("/api/route", { method: "PUT", body: JSON.stringify(data) }),
+  });
+}
+
 export function useGetDeviceStatus() {
   return useQuery({
     queryKey: ["device-status"],

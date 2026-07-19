@@ -5,6 +5,8 @@ import NotFound from '@/pages/not-found';
 import Overview from '@/pages/Overview';
 import TreeDetail from '@/pages/TreeDetail';
 import Login from '@/pages/Login';
+import RouteEditor from '@/pages/RouteEditor';
+import Drive from '@/pages/Drive';
 import { Shell } from '@/components/layout/shell';
 import { ProtectedRoute } from '@/components/protected-route';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
@@ -20,6 +22,8 @@ function Router() {
           <Shell>
             <Switch>
               <Route path="/" component={Overview} />
+              <Route path="/route" component={RouteEditor} />
+              <Route path="/drive" component={Drive} />
               <Route path="/trees/:id" component={TreeDetail} />
               <Route component={NotFound} />
             </Switch>
