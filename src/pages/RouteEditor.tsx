@@ -94,6 +94,9 @@ export default function RouteEditor() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div className="flex items-center gap-3 flex-1">
               <span className="text-muted-foreground font-mono text-sm">#{stopIdx + 1}</span>
+              {stop.isReturn && (
+                <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground">🏠 Return to station</span>
+              )}
               <Input
                 placeholder="Tree name (e.g. Tree_1)"
                 value={stop.treeName}

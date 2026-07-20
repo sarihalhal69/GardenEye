@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Flag, Save, Trash2 } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Flag, Save, Trash2, Home } from "lucide-react";
 import { useDrive, useSaveRoute, type RouteStop, type RouteStep } from "@/lib/api-client";
 
 const SPEED = 0.3;
@@ -30,6 +30,7 @@ export default function Drive() {
   const [treeName, setTreeName] = useState("");
   const [markerId, setMarkerId] = useState("");
   const [saved, setSaved] = useState(false);
+  const [returnedToStation, setReturnedToStation] = useState(false);
 
   const pressStart = useRef<number | null>(null);
   const resendInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -79,7 +80,20 @@ export default function Drive() {
     setMarkerId("");
   };
 
-  const removeStop = (i: number) => setStops((prev) => prev.filter((_, idx) => idx !== i));
+  const removeStop = (i: number) => {
+    setStops((prev) => {
+      const removed = prev[i];
+      if (removed?.isReturn) setReturnedToStation(false);
+      return prev.filter((_, idx) => idx !== i);
+    });
+  };
+
+  const markBackAtStation = () => {
+    if (currentSteps.length === 0) return;
+    setStops((prev) => [...prev, { treeName: "Station", isReturn: true, steps: currentSteps }]);
+    setCurrentSteps([]);
+    setReturnedToStation(true);
+  };
 
   const handleSaveRoute = () => {
     setSaved(false);
@@ -88,7 +102,8 @@ export default function Drive() {
 
   const DirButton = ({ action, icon: Icon, className }: { action: Action; icon: typeof ArrowUp; className?: string }) => (
     <button
-      className={`w-16 h-16 rounded-lg border-2 flex items-center justify-center transition-colors select-none ${
+      disabled={returnedToStation}
+      className={`w-16 h-16 rounded-lg border-2 flex items-center justify-center transition-colors select-none disabled:opacity-40 disabled:cursor-not-allowed ${
         activeAction === action ? "bg-primary border-primary text-primary-foreground" : "border-border hover:bg-muted"
       } ${className || ""}`}
       onMouseDown={() => startAction(action)}
@@ -109,6 +124,28 @@ export default function Drive() {
           Press and hold to steer the car. When you reach a tree, name it below to save that leg of the trip.
         </p>
       </div>
+
+      <Card className="bg-muted/40 border-dashed">
+        <CardContent className="pt-6">
+          <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
+            <li>Put the car at its home/station point before you start.</li>
+            <li>Drive it to the first tree using the buttons below.</li>
+            <li>Click <strong>"Add stop"</strong>, name the tree, and note its marker number.</li>
+            <li>Repeat for each remaining tree.</li>
+            <li>After the last tree, drive the car back to the station point.</li>
+            <li>Click <strong>"I'm back at the station"</strong> instead of "Add stop" for that final leg.</li>
+            <li>Click <strong>"Save route"</strong> — the car will now repeat this automatically, ending back home each time.</li>
+          </ol>
+        </CardContent>
+      </Card>
+
+      {returnedToStation && (
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="pt-6 text-green-800 text-sm">
+            Route complete — the car will return to the station after its last tree. Click "Save route" below.
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="pt-6 flex flex-col items-center gap-2">
@@ -139,19 +176,24 @@ export default function Drive() {
         <CardContent className="flex items-end gap-3 flex-wrap">
           <div>
             <Label className="mb-1 block text-sm">Tree name</Label>
-            <Input value={treeName} onChange={(e) => setTreeName(e.target.value)} placeholder="Tree 1" className="w-40" />
+            <Input value={treeName} onChange={(e) => setTreeName(e.target.value)} placeholder="Tree 1" className="w-40" disabled={returnedToStation} />
           </div>
           <div>
             <Label className="mb-1 block text-sm">Marker # (optional)</Label>
             <Input
               type="number" min={0} max={49}
               value={markerId} onChange={(e) => setMarkerId(e.target.value)}
-              placeholder="e.g. 3" className="w-28"
+              placeholder="e.g. 3" className="w-28" disabled={returnedToStation}
             />
           </div>
-          <Button onClick={addStop} disabled={!treeName.trim() || currentSteps.length === 0}>
+          <Button onClick={addStop} disabled={returnedToStation || !treeName.trim() || currentSteps.length === 0}>
             <Flag className="w-4 h-4 mr-1" /> Add stop
           </Button>
+          {stops.some((s) => !s.isReturn) && !returnedToStation && (
+            <Button variant="outline" onClick={markBackAtStation} disabled={currentSteps.length === 0}>
+              <Home className="w-4 h-4 mr-1" /> I'm back at the station
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -162,7 +204,9 @@ export default function Drive() {
             {stops.map((stop, i) => (
               <div key={i} className="flex items-center justify-between border-b border-border py-2 last:border-0">
                 <div>
-                  <span className="font-medium">#{i + 1} {stop.treeName}</span>
+                  <span className="font-medium">
+                    {stop.isReturn ? "🏠 Return to station" : `#${i + 1} ${stop.treeName}`}
+                  </span>
                   <span className="text-muted-foreground text-sm ml-2">
                     {stop.steps.length} step(s){stop.markerId != null ? `, marker ${stop.markerId}` : ""}
                   </span>

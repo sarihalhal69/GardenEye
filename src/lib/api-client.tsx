@@ -87,6 +87,7 @@ export interface RouteStop {
   orderIndex?: number;
   treeName: string;
   markerId?: number | null;
+  isReturn?: boolean;
   steps: RouteStep[];
 }
 
