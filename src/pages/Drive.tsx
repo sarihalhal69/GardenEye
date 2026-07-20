@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Flag, Save, Trash2, Home } from "lucide-react";
-import { useDrive, useSaveRoute, type RouteStop, type RouteStep } from "@/lib/api-client";
+import { useDrive, useSaveRouteStops, useConfigureRoverKeepalive, type RouteStop, type RouteStep } from "@/lib/api-client";
 
 const SPEED = 0.3;
-const RESEND_MS = 800; // keep the rover's ~3s heartbeat happy while a button is held
+const ROVER_HEARTBEAT_TIMEOUT_MS = 15000; // tell the rover not to auto-stop for 15s at a time
 
 type Action = RouteStep["action"];
 
@@ -20,9 +20,12 @@ const DIRECTION_VECTORS: Record<Action, { left: number; right: number }> = {
 };
 
 export default function Drive() {
+  const { id } = useParams<{ id: string }>();
+  const routeId = parseInt(id, 10);
   const [, setLocation] = useLocation();
   const drive = useDrive();
-  const saveRoute = useSaveRoute();
+  const saveStops = useSaveRouteStops();
+  const configureKeepalive = useConfigureRoverKeepalive();
 
   const [stops, setStops] = useState<RouteStop[]>([]);
   const [currentSteps, setCurrentSteps] = useState<RouteStep[]>([]);
@@ -33,28 +36,34 @@ export default function Drive() {
   const [returnedToStation, setReturnedToStation] = useState(false);
 
   const pressStart = useRef<number | null>(null);
-  const resendInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const keepaliveInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const stopSending = () => {
-    if (resendInterval.current) {
-      clearInterval(resendInterval.current);
-      resendInterval.current = null;
-    }
-  };
+  useEffect(() => {
+    // Tell the rover once not to auto-stop for a while, so we don't have to
+    // hammer its small onboard server with constant resends while driving.
+    configureKeepalive.mutate({ timeoutMs: ROVER_HEARTBEAT_TIMEOUT_MS });
+    // Refresh that setting periodically in the background (well under the
+    // timeout window) in case the rover resets it after each move command.
+    keepaliveInterval.current = setInterval(
+      () => configureKeepalive.mutate({ timeoutMs: ROVER_HEARTBEAT_TIMEOUT_MS }),
+      ROVER_HEARTBEAT_TIMEOUT_MS - 5000
+    );
+    return () => {
+      if (keepaliveInterval.current) clearInterval(keepaliveInterval.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startAction = (action: Action) => {
     if (activeAction) return; // already driving
     setActiveAction(action);
     pressStart.current = Date.now();
-    const vec = DIRECTION_VECTORS[action];
-    drive.mutate(vec);
-    resendInterval.current = setInterval(() => drive.mutate(vec), RESEND_MS);
+    drive.mutate(DIRECTION_VECTORS[action]);
   };
 
   const endAction = () => {
     if (!activeAction || pressStart.current === null) return;
     const seconds = Math.round(((Date.now() - pressStart.current) / 100)) / 10; // one decimal
-    stopSending();
     drive.mutate({ left: 0, right: 0 });
     if (seconds > 0) {
       setCurrentSteps((prev) => [...prev, { action: activeAction, seconds, speed: SPEED }]);
@@ -62,8 +71,6 @@ export default function Drive() {
     setActiveAction(null);
     pressStart.current = null;
   };
-
-  useEffect(() => () => stopSending(), []);
 
   const addStop = () => {
     if (!treeName.trim() || currentSteps.length === 0) return;
@@ -97,7 +104,7 @@ export default function Drive() {
 
   const handleSaveRoute = () => {
     setSaved(false);
-    saveRoute.mutate({ stops }, { onSuccess: () => setSaved(true) });
+    saveStops.mutate({ routeId, stops }, { onSuccess: () => setSaved(true) });
   };
 
   const DirButton = ({ action, icon: Icon, className }: { action: Action; icon: typeof ArrowUp; className?: string }) => (
@@ -119,6 +126,9 @@ export default function Drive() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-24">
       <div>
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/routes")} className="mb-2 -ml-2">
+          <ArrowLeft className="w-4 h-4 mr-1" /> Back to routes
+        </Button>
         <h1 className="text-3xl font-serif">Drive & Record Route</h1>
         <p className="text-muted-foreground mt-1">
           Press and hold to steer the car. When you reach a tree, name it below to save that leg of the trip.
@@ -221,12 +231,12 @@ export default function Drive() {
       )}
 
       <div className="flex items-center gap-3 sticky bottom-4 bg-background/95 backdrop-blur p-4 rounded-lg border">
-        <Button onClick={handleSaveRoute} disabled={stops.length === 0 || saveRoute.isPending}>
-          <Save className="w-4 h-4 mr-1" /> {saveRoute.isPending ? "Saving..." : "Save route"}
+        <Button onClick={handleSaveRoute} disabled={stops.length === 0 || saveStops.isPending}>
+          <Save className="w-4 h-4 mr-1" /> {saveStops.isPending ? "Saving..." : "Save route"}
         </Button>
-        <Button variant="outline" onClick={() => setLocation("/route")}>View saved route</Button>
+        <Button variant="outline" onClick={() => setLocation(`/routes/${routeId}/edit`)}>View saved route</Button>
         {saved && <span className="text-sm text-green-600">Saved!</span>}
-        {saveRoute.isError && <span className="text-sm text-destructive">Failed to save. Try again.</span>}
+        {saveStops.isError && <span className="text-sm text-destructive">Failed to save. Try again.</span>}
       </div>
     </div>
   );

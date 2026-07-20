@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { useParams, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, ArrowUp, ArrowDown, MoveRight } from "lucide-react";
-import { useGetRoute, useSaveRoute, type RouteStop, type RouteStep } from "@/lib/api-client";
+import { Trash2, Plus, ArrowUp, ArrowDown, MoveRight, ArrowLeft } from "lucide-react";
+import { useGetRoute, useSaveRouteStops, type RouteStop, type RouteStep } from "@/lib/api-client";
 
 const ACTION_LABELS: Record<RouteStep["action"], string> = {
   forward: "Forward",
@@ -23,14 +24,17 @@ function emptyStop(): RouteStop {
 }
 
 export default function RouteEditor() {
-  const { data, isLoading } = useGetRoute();
-  const saveRoute = useSaveRoute();
+  const { id } = useParams<{ id: string }>();
+  const routeId = parseInt(id, 10);
+  const [, setLocation] = useLocation();
+  const { data: route, isLoading } = useGetRoute(routeId);
+  const saveStops = useSaveRouteStops();
   const [stops, setStops] = useState<RouteStop[]>([]);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (data) setStops(data.length ? data : [emptyStop()]);
-  }, [data]);
+    if (route) setStops(route.stops.length ? route.stops : [emptyStop()]);
+  }, [route]);
 
   const updateStop = (i: number, patch: Partial<RouteStop>) => {
     setStops((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
@@ -74,7 +78,7 @@ export default function RouteEditor() {
 
   const handleSave = () => {
     setSaved(false);
-    saveRoute.mutate({ stops }, { onSuccess: () => setSaved(true) });
+    saveStops.mutate({ routeId, stops }, { onSuccess: () => setSaved(true) });
   };
 
   if (isLoading) return <div className="p-6 text-muted-foreground">Loading route...</div>;
@@ -82,7 +86,10 @@ export default function RouteEditor() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-24">
       <div>
-        <h1 className="text-3xl font-serif">Route Editor</h1>
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/routes")} className="mb-2 -ml-2">
+          <ArrowLeft className="w-4 h-4 mr-1" /> Back to routes
+        </Button>
+        <h1 className="text-3xl font-serif">Route Editor{route ? `: ${route.name}` : ""}</h1>
         <p className="text-muted-foreground mt-1">
           Define the trees the car visits, in order, and the movement steps to reach each one
           from the previous stop.
@@ -175,11 +182,11 @@ export default function RouteEditor() {
       </Button>
 
       <div className="flex items-center gap-3 sticky bottom-4 bg-background/95 backdrop-blur p-4 rounded-lg border">
-        <Button onClick={handleSave} disabled={saveRoute.isPending}>
-          {saveRoute.isPending ? "Saving..." : "Save route"}
+        <Button onClick={handleSave} disabled={saveStops.isPending}>
+          {saveStops.isPending ? "Saving..." : "Save route"}
         </Button>
         {saved && <span className="text-sm text-green-600 flex items-center gap-1"><MoveRight className="w-4 h-4" /> Saved — the car will use this next run</span>}
-        {saveRoute.isError && <span className="text-sm text-destructive">Failed to save. Try again.</span>}
+        {saveStops.isError && <span className="text-sm text-destructive">Failed to save. Try again.</span>}
       </div>
     </div>
   );

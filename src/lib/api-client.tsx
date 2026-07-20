@@ -76,7 +76,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json();
 }
 
-// --- Route ---
+// --- Routes ---
 export interface RouteStep {
   action: "forward" | "backward" | "turn_left" | "turn_right";
   seconds: number;
@@ -90,6 +90,28 @@ export interface RouteStop {
   isReturn?: boolean;
   steps: RouteStep[];
 }
+export interface ScheduleEntry {
+  id?: number;
+  dayOfWeek: number; // 0=Monday ... 6=Sunday
+  time: string; // "HH:MM"
+}
+export interface RouteSummary {
+  id: number;
+  name: string;
+  createdAt: string;
+  stopCount: number;
+  schedule: ScheduleEntry[];
+}
+export interface RouteDetail extends RouteSummary {
+  stops: RouteStop[];
+}
+
+export function useConfigureRoverKeepalive(): UseMutationResult<{ ok: boolean }, Error, { timeoutMs: number }> {
+  return useMutation({
+    mutationFn: (data) =>
+      request<{ ok: boolean }>("/api/device/drive/keepalive-config", { method: "POST", body: JSON.stringify(data) }),
+  });
+}
 
 export function useDrive(): UseMutationResult<{ ok: boolean }, Error, { left: number; right: number }> {
   return useMutation({
@@ -98,17 +120,45 @@ export function useDrive(): UseMutationResult<{ ok: boolean }, Error, { left: nu
   });
 }
 
-export function useGetRoute() {
+export function useListRoutes() {
   return useQuery({
-    queryKey: ["route"],
-    queryFn: () => request<RouteStop[]>("/api/route"),
+    queryKey: ["routes"],
+    queryFn: () => request<RouteSummary[]>("/api/routes"),
   });
 }
 
-export function useSaveRoute(): UseMutationResult<RouteStop[], Error, { stops: RouteStop[] }> {
+export function useGetRoute(routeId: number) {
+  return useQuery({
+    queryKey: ["route", routeId],
+    queryFn: () => request<RouteDetail>(`/api/routes/${routeId}`),
+    enabled: Number.isFinite(routeId),
+  });
+}
+
+export function useCreateRoute(): UseMutationResult<RouteSummary, Error, { name: string }> {
   return useMutation({
     mutationFn: (data) =>
-      request<RouteStop[]>("/api/route", { method: "PUT", body: JSON.stringify(data) }),
+      request<RouteSummary>("/api/routes", { method: "POST", body: JSON.stringify(data) }),
+  });
+}
+
+export function useDeleteRoute(): UseMutationResult<void, Error, { routeId: number }> {
+  return useMutation({
+    mutationFn: ({ routeId }) => request<void>(`/api/routes/${routeId}`, { method: "DELETE" }),
+  });
+}
+
+export function useSaveRouteStops(): UseMutationResult<RouteDetail, Error, { routeId: number; stops: RouteStop[] }> {
+  return useMutation({
+    mutationFn: ({ routeId, stops }) =>
+      request<RouteDetail>(`/api/routes/${routeId}/stops`, { method: "PUT", body: JSON.stringify({ stops }) }),
+  });
+}
+
+export function useSaveSchedule(): UseMutationResult<ScheduleEntry[], Error, { routeId: number; entries: ScheduleEntry[] }> {
+  return useMutation({
+    mutationFn: ({ routeId, entries }) =>
+      request<ScheduleEntry[]>(`/api/routes/${routeId}/schedule`, { method: "PUT", body: JSON.stringify({ entries }) }),
   });
 }
 
