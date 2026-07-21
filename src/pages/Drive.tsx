@@ -8,6 +8,7 @@ import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Flag, Save, Trash2, Home } f
 import { useDrive, useSaveRouteStops, useConfigureRoverKeepalive, type RouteStop, type RouteStep } from "@/lib/api-client";
 
 const SPEED = 0.3;
+const TURN_SPEED = 0.45; // stronger than forward/backward - turning needs more torque to overcome floor friction
 const ROVER_HEARTBEAT_TIMEOUT_MS = 15000; // tell the rover not to auto-stop for 15s at a time
 
 type Action = RouteStep["action"];
@@ -15,8 +16,8 @@ type Action = RouteStep["action"];
 const DIRECTION_VECTORS: Record<Action, { left: number; right: number }> = {
   forward: { left: SPEED, right: SPEED },
   backward: { left: -SPEED, right: -SPEED },
-  turn_left: { left: -SPEED, right: SPEED },
-  turn_right: { left: SPEED, right: -SPEED },
+  turn_left: { left: -TURN_SPEED, right: TURN_SPEED },
+  turn_right: { left: TURN_SPEED, right: -TURN_SPEED },
 };
 
 export default function Drive() {
@@ -66,7 +67,8 @@ export default function Drive() {
     const seconds = Math.round(((Date.now() - pressStart.current) / 100)) / 10; // one decimal
     drive.mutate({ left: 0, right: 0 });
     if (seconds > 0) {
-      setCurrentSteps((prev) => [...prev, { action: activeAction, seconds, speed: SPEED }]);
+      const recordedSpeed = (activeAction === "turn_left" || activeAction === "turn_right") ? TURN_SPEED : SPEED;
+      setCurrentSteps((prev) => [...prev, { action: activeAction, seconds, speed: recordedSpeed }]);
     }
     setActiveAction(null);
     pressStart.current = null;
